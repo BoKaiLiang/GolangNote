@@ -1,0 +1,237 @@
+# 04-3-14 Go Type 保留字
+
+## 前言
+
+* Ref. [資料來源](https://studygolang.com/articles/17179)
+* type 是 Go 語法中常用的關鍵字， type 絕不只是對應 C/C++ 中的 Typedef。搞清楚就能理解 struct、interface、函式等的使用。
+
+## (1) 自訂義結構體
+
+```
+// 結構體定義
+type person struct {
+	name string
+	age int
+}
+
+func main() {
+	// 結構體初始化
+	p := person {
+		name: "mingo"
+		age: 18,       // 或著下面 } 移上來 可以省略逗號
+	}
+
+	fmt.Println(p.name)
+}
+
+// 初始化字段不一定要全部指定， name 可以預設長度為0的空字串
+p := person {
+	age: 18,
+}
+```
+
+## (2) 類型等價定義，類型重命名
+
+```
+type name string       // name 類型 與 string 一樣
+
+func main() {
+	var myname name = "mingo"    // 字串類型
+	le := []byte(myname)         // 字串 轉換 字元
+	fmt.Println(len(le))         // 字串長度
+}
+```
+
+* type 不只用於定義一系列別名，也可以針對新類型定義方法。
+
+```
+type name string
+
+func (n name) len() int {
+	return len(n)
+}
+
+func main() {
+	var myname name = "mingo"    // 字串類型
+	le := []byte(myname)         // 字串 轉 字元
+	fmt.Println(len(le))         // 字串床度
+	fmt.Println(myname.len())    // 調用對象的函式
+}
+```
+
+## (3) 結構體內嵌匿名成員
+
+```
+// 結構體內嵌匿名成員定義
+type person struct {
+	string      // 直接寫類型，匿名
+	age int
+}
+
+func main() {
+	// 結構體匿名成員初始化
+	p := person{string: "mingo", age": 18}
+	// p := person{string: "mingo"}
+	// p := person{"mingo", 18}     // 必須寫全，不可以省略部分字段
+
+	// 結構體匿名成員訪問
+	fmt.Println(p.string)           // 不能用強制類型轉換 (類型斷言) : p.(string)
+}
+```
+
+* 以下只是一個匿名成員的例子
+
+```
+// 結構體內嵌匿名成員定義
+type person struct {
+	string
+}
+
+func main() {
+	// 結構體匿名成員初始化
+	p := person {string: "mingo"}
+	// p := person {"mingo"}
+
+	// 結構體匿名成員訪問
+	fmt.Println(p.string)          // 不能用強制類型轉換 (類型斷言) : p.(string)
+}
+```
+
+## (4) 定義介面類型
+
+```
+package main
+
+import (
+	"fmt"
+)
+
+
+// 定義介面
+type Personer interface {
+	Run()
+	Name() string
+}
+
+
+// 實作介面 : 注意不一定式結構體，也可以是函式對象，參考 (5)
+type person struct {
+	name string
+	age int
+}
+
+func (person) Run() {
+	fmt.Println("running...")
+}
+
+
+// 接收參數 person 不可以是指標類型，否則不認為是實作介面
+func (p person) Name() string {
+	return p.name
+}
+
+
+func main() {
+	// 介面 宣告
+	var p Personer
+	fmt.Println(p)      // 值 nil
+
+	// 實例化結構體，並賦值給 interface
+	p = person{"mingo", 18}
+	// p = &person{"mingo", 18}
+	p.Run()
+	fmt.Println(p.Name())
+
+	var p2 person = p.(person)     // 類型斷言，街口類型斷言到具體類型
+	fmt.Println(p2.age)
+}
+
+// 另外，類型斷言返回值也可以有第二個 bool 值，表示斷言是否成功。
+
+func XXXX() {
+	if p2, ok := p.(person); ok {    // 斷言成功 ok 值為 true
+		fmt.Println(ok)
+		fmt.Println(p2.age)
+	}
+}
+```
+
+## (5) 定義函數類型
+
+```
+// 以下是定義一個函式類型的 handler
+type handler func(name string) int
+
+// 針對這個函式類型可以再定義函式，
+func (h handler) add(name string) int {
+	return h(name) + 10
+}
+```
+
+* 下面例子，涉及函式、結構體、介面
+
+```
+package main
+
+improt (
+	"fmt"
+)
+
+// 定義介面
+type adder interface {
+	add(string) int
+}
+
+// 定義函式類型
+type handler func(name string) int
+
+// 實作函式類型
+func (h handler) add(name string) int {
+	return h(name) + 10
+}
+
+// 函式參數類型 接受實作 adder 介面的對象 (函式或結構體)
+func process(a adder) {
+	fmt.Println("process:", a.add("mingo"))
+}
+
+// 另一個函式定義
+func doubler(name string) int {
+	return len(name) * 2
+}
+
+
+// 非函式類型
+type myint int
+
+// 實作 adder 介面
+func (i myint) add(name string) int {
+	return len(name) + int(i)
+}
+
+func main() {
+	// 注意要成為函式對象 必須顯示定義 handler 類型
+	var my handler = func (name string) int {
+		return len(name)
+	}
+
+
+	// 以下是函式或函式方法的使用
+	fmt.Println(my("mingo"))        // 使用函式
+
+	fmt.Println(my.add("mingo"))    // 使用函式對象的方法
+
+	// doubler 函式顯示轉換成 handler 函式對象 => 使用後調用對象的 add 方法
+	fmt.Println(handler(doubler).add("mingo"))
+
+
+	// 以下針對介面 adder 的使用
+	process(my)
+
+	// 因為 process 接受的參數類型是 handler  所以要強制轉換
+	process(handler(doubler))
+
+	// 實作 adder 介面不僅可以是函式 也可以是結構體
+	process(myint(8))
+}
+```
